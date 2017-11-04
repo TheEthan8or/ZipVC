@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ZipVersionControl',
-    version='0.0.0.4',
+    version='0.0.0.7',
     packages=find_packages(),
     url='https://bitbucket.org/TSDude/zipversioncontrol',
     license='MIT License',

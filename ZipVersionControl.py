@@ -85,10 +85,6 @@ def init():
 init()
 
 
-def git_config():
-    print("Unusable")
-
-
 # Defines Commands
 # commit
 def commit(commit_name):
@@ -178,8 +174,9 @@ def get():
     # Removes old file
     print("Replacing old file...")
     os.remove(file)
-    # Renames new file to replace old file
-    os.rename(file + ".zip", file)
+    # Replaces old file
+    os.rename(file_name[-1] + ".zip", file_name[-1])
+    shutil.move(file_name[-1], file)
     # Cleans up temporary .zvc folder and excess Backups
     print("Cleaning up...")
     shutil.rmtree(file + '.zvc')
