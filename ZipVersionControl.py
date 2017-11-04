@@ -1,0 +1,229 @@
+#!/bin/env python3.6
+import datetime
+import os
+import platform
+import shutil
+import sys
+import zipfile
+
+import colorama
+import git
+
+colorama.init()
+# Sets up variables
+file = ''
+backupCount = ''
+gitDir = ''
+scrollVar = 0
+options = ['get', 'commit', 'settings']
+
+# Key Detection Functions
+if platform.system() == "Windows":
+    # noinspection PyUnresolvedReferences
+    import msvcrt
+
+
+    def get_ch():
+        return msvcrt.getch()
+else:
+    import tty
+    import termios
+
+
+    def get_ch():
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+
+# Sets up config-related stuff
+def config():  # Sets up config file
+    global file
+    global backupCount
+    global gitDir
+    file = input("Zip File Name >")
+    backupCount = input("Number of File colorama.Backups to Keep (-1 is keep all) >")
+    gitDir = input("Git Repo Directory >")
+    # Recreates config file
+    open(os.path.basename(__file__) + '.config', 'w').close()
+    config_file_w = open(os.path.basename(__file__) + '.config', 'w')
+    config_file_w.write(file + '\n' + backupCount + '\n' + gitDir)
+
+
+def init():
+    global file
+    global backupCount
+    global gitDir
+    # Opens config file
+    if os.path.isfile(os.path.basename(__file__) + '.config'):
+        try:
+            configfile = open(os.path.basename(__file__) + '.config', 'r').read()
+            config_files = configfile.splitlines()
+            file = config_files[0]
+            backupCount = config_files[1]
+            gitDir = config_files[2]
+        except ImportWarning:
+            print("\n" * 100)
+            print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Configuring Program" + colorama.Style.RESET_ALL)
+            config()
+
+    else:
+        print("\n" * 100)
+        print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Configuring Program" + colorama.Style.RESET_ALL)
+        config()
+
+    # Sets up git
+    global repo
+    repo = git.Repo.init(gitDir)
+
+
+init()
+
+
+def git_config():
+    print("Unusable")
+
+
+# Defines Commands
+# commit
+def commit(commit_name):
+    if commit_name == "":
+        print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using file " + file + " and directory " + gitDir + colorama.
+              Style.RESET_ALL)
+        commit_name = input("Commit name >")
+    # Deletes outdated contents of git repository
+    for gitFile in os.listdir(gitDir):
+        git_file_path = os.path.join(gitDir, gitFile)
+        if os.path.isfile(git_file_path):
+            if gitFile != ".gitignore" and gitFile != ".gitattributes":
+                os.remove(git_file_path)
+        elif os.path.isdir(git_file_path):
+            if gitFile != ".git":
+                shutil.rmtree(git_file_path)
+    # Extracts file
+    print("Extracting File...")
+    with zipfile.ZipFile(file, 'r') as zipFile:
+        zipFile.extractall(gitDir)
+        zipFile.close()
+
+    # Commits changes
+    print("Adding and Committing to git...")
+    # Adds unadded files to repo
+    repo.git.add(all=True)
+    # Commits repo
+    repo.index.commit(commit_name)
+
+    if commit_name == "":
+        print(colorama.Back.GREEN + colorama.Fore.BLACK + "SUCCESS" + colorama.Style.RESET_ALL)
+        input("Press Enter to continue...")
+
+
+# get
+def get():
+    print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using file " + file + " and directory " + gitDir + colorama.
+          Style.RESET_ALL)
+    # Commits File
+    print(colorama.Back.YELLOW + colorama.Fore.BLACK + "NOT MAKING A COMMIT MAY CAUSE CONFLICTS!" + colorama.Style.
+          RESET_ALL)
+    print("Leave commit-name blank to not do a commit.")
+    get_commit_name = input("Commit name >")
+    if get_commit_name != "":
+        commit(get_commit_name)
+    # Backs up file
+    if backupCount != 0:
+        print("Backing up file...")
+        backup_name = str(datetime.datetime.now())
+        new_path = os.getcwd() + '/' + file + '.Backups'  # Makes Directory if it Doesn't exist
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+        shutil.copyfile(os.getcwd() + '/' + file,
+                        os.getcwd() + '/' + file + '.Backups/' + backup_name.replace(':', '-'))
+    # Notifies user of number of Backups
+    if backupCount == -1:
+        print("Keeping all Backups.")
+    elif backupCount == 0:
+        print("Not Backing up.")
+    else:
+        print("Keeping " + backupCount + " Backup files.")
+    # Syncs git repo
+    print("Merging changes to local repo...")
+    o = repo.remotes.origin
+    o.pull()
+    print("Pushing changes to remote repo...")
+    o.push()
+    # Copies necessary repo files for management
+    print("Creating temporary copy of necessary files...")
+    if os.path.isdir(os.getcwd() + '/' + file + '.zvc'):
+        shutil.rmtree(os.getcwd() + '/' + file + '.zvc')
+    os.mkdir(os.getcwd() + '/' + file + '.zvc')
+    for gitFile in os.listdir(gitDir):
+        git_file_path = os.path.join(gitDir, gitFile)
+        if os.path.isfile(git_file_path):
+            if gitFile != ".gitignore" and gitFile != ".gitattributes":
+                shutil.copyfile(git_file_path, os.getcwd() + '/' + file + '.zvc/' + gitFile)
+        elif os.path.isdir(git_file_path):
+            if gitFile != ".git":
+                shutil.copytree(git_file_path, os.getcwd() + '/' + file + '.zvc/' + gitFile)
+    # Creates new archive
+    print("Creating new zip archive...")
+    shutil.make_archive(file, 'zip', os.getcwd() + '/' + file + '.zvc')
+    # Removes old file
+    print("Replacing old file...")
+    os.remove(os.getcwd() + '/' + file)
+    # Renames new file to replace old file
+    os.rename(os.getcwd() + '/' + file + ".zip", os.getcwd() + '/' + file)
+    # Cleans up temporary .zvc folder and excess Backups
+    print("Cleaning up...")
+    shutil.rmtree(os.getcwd() + '/' + file + '.zvc')
+
+    if int(backupCount) == 0:
+        if os.path.exists(os.getcwd() + '/' + file + '.Backups'):
+            shutil.rmtree(os.path.exists(os.getcwd() + '/' + file + '.Backups'))
+    else:
+        path = os.getcwd() + '/' + file + '.Backups'
+        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        if len(files) > int(backupCount):
+            for i in range(0, len(files) - int(backupCount)):
+                files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+                files.sort()
+                os.remove(path + '/' + files[0])
+
+    print(colorama.Back.GREEN + colorama.Fore.BLACK + "SUCCESS" + colorama.Style.RESET_ALL)
+    input("Press Enter to continue...")
+
+
+# Starts user interface
+while True:
+    print('\n' * 100)
+    print(colorama.Back.GREEN + colorama.Fore.BLACK + "Zip Version Control: \t" + colorama.Fore.RED +
+          "What do you want to do?" + colorama.Style.RESET_ALL)
+    print(colorama.Fore.RED + "Use the arrow keys to change selection. Press Enter to" +
+          " select. Press esc to exit." + colorama.Style.RESET_ALL + "\n")
+    for option in options:
+        if scrollVar == options.index(option):
+            print(colorama.Back.WHITE + colorama.Fore.BLACK + option + colorama.Style.RESET_ALL)
+        else:
+            print(option)
+
+    # Waits for keypress and executes command
+    buttonPressed = get_ch()
+    if buttonPressed == b'\x1b':
+        sys.exit()
+    if buttonPressed == b'H':
+        scrollVar = scrollVar - 1
+    if buttonPressed == b'P':
+        scrollVar = scrollVar + 1
+    if buttonPressed == b'\r':
+        print('\n' * 100)
+        print(colorama.Back.YELLOW + colorama.Fore.BLACK + options[scrollVar] + colorama.Style.RESET_ALL)
+        if scrollVar == 0:
+            get()
+        if scrollVar == 1:
+            commit("")
+        if scrollVar == 2:
+            config()
