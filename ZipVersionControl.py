@@ -46,8 +46,8 @@ def config():  # Sets up config file
     global file
     global backupCount
     global gitDir
-    file = input("Zip File Name >")
-    backupCount = input("Number of File colorama.Backups to Keep (-1 is keep all) >")
+    file = input("Zip File Path >")
+    backupCount = input("Number of File Backups to Keep (-1 is keep all) >")
     gitDir = input("Git Repo Directory >")
     # Recreates config file
     open(os.path.basename(__file__) + '.config', 'w').close()
@@ -93,8 +93,8 @@ def git_config():
 # commit
 def commit(commit_name):
     if commit_name == "":
-        print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using file " + file + " and directory " + gitDir + colorama.
-              Style.RESET_ALL)
+        print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using zip file " + file + " and git directory " + gitDir +
+              colorama.Style.RESET_ALL)
         commit_name = input("Commit name >")
     # Deletes outdated contents of git repository
     for gitFile in os.listdir(gitDir):
@@ -138,11 +138,10 @@ def get():
     if backupCount != 0:
         print("Backing up file...")
         backup_name = str(datetime.datetime.now())
-        new_path = os.getcwd() + '/' + file + '.Backups'  # Makes Directory if it Doesn't exist
+        new_path = file + '.Backups'  # Makes Directory if it Doesn't exist
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        shutil.copyfile(os.getcwd() + '/' + file,
-                        os.getcwd() + '/' + file + '.Backups/' + backup_name.replace(':', '-'))
+        shutil.copyfile(file, file + '.Backups/' + backup_name.replace(':', '-'))
     # Notifies user of number of Backups
     if backupCount == -1:
         print("Keeping all Backups.")
@@ -158,34 +157,38 @@ def get():
     o.push()
     # Copies necessary repo files for management
     print("Creating temporary copy of necessary files...")
-    if os.path.isdir(os.getcwd() + '/' + file + '.zvc'):
-        shutil.rmtree(os.getcwd() + '/' + file + '.zvc')
-    os.mkdir(os.getcwd() + '/' + file + '.zvc')
+    if os.path.isdir(file + '.zvc'):
+        shutil.rmtree(file + '.zvc')
+    os.mkdir(file + '.zvc')
     for gitFile in os.listdir(gitDir):
         git_file_path = os.path.join(gitDir, gitFile)
         if os.path.isfile(git_file_path):
             if gitFile != ".gitignore" and gitFile != ".gitattributes":
-                shutil.copyfile(git_file_path, os.getcwd() + '/' + file + '.zvc/' + gitFile)
+                shutil.copyfile(git_file_path, file + '.zvc/' + gitFile)
         elif os.path.isdir(git_file_path):
             if gitFile != ".git":
-                shutil.copytree(git_file_path, os.getcwd() + '/' + file + '.zvc/' + gitFile)
+                shutil.copytree(git_file_path, file + '.zvc/' + gitFile)
     # Creates new archive
     print("Creating new zip archive...")
-    shutil.make_archive(file, 'zip', os.getcwd() + '/' + file + '.zvc')
+    if platform.system() == "Windows":
+        file_name = file.split("\\")
+    else:
+        file_name = file.split("/")
+    shutil.make_archive(file_name[-1], 'zip', file + '.zvc')
     # Removes old file
     print("Replacing old file...")
-    os.remove(os.getcwd() + '/' + file)
+    os.remove(file)
     # Renames new file to replace old file
-    os.rename(os.getcwd() + '/' + file + ".zip", os.getcwd() + '/' + file)
+    os.rename(file + ".zip", file)
     # Cleans up temporary .zvc folder and excess Backups
     print("Cleaning up...")
-    shutil.rmtree(os.getcwd() + '/' + file + '.zvc')
+    shutil.rmtree(file + '.zvc')
 
     if int(backupCount) == 0:
-        if os.path.exists(os.getcwd() + '/' + file + '.Backups'):
-            shutil.rmtree(os.path.exists(os.getcwd() + '/' + file + '.Backups'))
+        if os.path.exists(file + '.Backups'):
+            shutil.rmtree(os.path.exists(file + '.Backups'))
     else:
-        path = os.getcwd() + '/' + file + '.Backups'
+        path = file + '.Backups'
         files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
         if len(files) > int(backupCount):
             for i in range(0, len(files) - int(backupCount)):
