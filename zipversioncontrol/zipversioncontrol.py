@@ -15,7 +15,7 @@ file = ''
 backupCount = ''
 gitDir = ''
 scrollVar = 0
-options = ['get', 'commit', 'settings']
+options = ['sync', 'commit', 'settings']
 
 # Key Detection Functions
 if platform.system() == "Windows":
@@ -50,8 +50,8 @@ def config():  # Sets up config file
     backupCount = input("Number of File Backups to Keep (-1 is keep all) >")
     gitDir = input("Git Repo Directory >")
     # Recreates config file
-    open(os.path.basename(__file__) + '.config', 'w').close()
-    config_file_w = open(os.path.basename(__file__) + '.config', 'w')
+    open(os.path.basename(__file__) + '.cfg', 'w').close()
+    config_file_w = open(os.path.basename(__file__) + '.cfg', 'w')
     config_file_w.write(file + '\n' + backupCount + '\n' + gitDir)
 
 
@@ -60,14 +60,14 @@ def init():
     global backupCount
     global gitDir
     # Opens config file
-    if os.path.isfile(os.path.basename(__file__) + '.config'):
+    if os.path.isfile(os.path.basename(__file__) + '.cfg'):
         try:
-            configfile = open(os.path.basename(__file__) + '.config', 'r').read()
+            configfile = open(os.path.basename(__file__) + '.cfg', 'r').read()
             config_files = configfile.splitlines()
             file = config_files[0]
             backupCount = config_files[1]
             gitDir = config_files[2]
-        except ImportWarning:
+        except ResourceWarning:
             print("\n" * 100)
             print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Configuring Program" + colorama.Style.RESET_ALL)
             config()
@@ -119,8 +119,8 @@ def commit(commit_name):
         input("Press Enter to continue...")
 
 
-# get
-def get():
+# sync
+def sync():
     print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using file " + file + " and directory " + gitDir + colorama.
           Style.RESET_ALL)
     # Commits File
@@ -148,7 +148,13 @@ def get():
     # Syncs git repo
     print("Merging changes to local repo...")
     o = repo.remotes.origin
-    o.pull()
+    try:
+        o.pull()
+    except RuntimeError:
+        print(colorama.Back.RED + colorama.Fore.WHITE + "An error has occurred.\n" +
+              "Please do a pull on a different git client to fix the issue.")
+        print("ERROR")
+        sys.exit("Problem with git pull")
     print("Pushing changes to remote repo...")
     o.push()
     # Copies necessary repo files for management
@@ -222,7 +228,7 @@ while True:
         print('\n' * 100)
         print(colorama.Back.YELLOW + colorama.Fore.BLACK + options[scrollVar] + colorama.Style.RESET_ALL)
         if scrollVar == 0:
-            get()
+            sync()
         if scrollVar == 1:
             commit("")
         if scrollVar == 2:
