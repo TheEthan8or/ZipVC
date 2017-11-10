@@ -134,7 +134,7 @@ def sync():
     if file_modify_date > last_commit_date:
         print(colorama.Back.YELLOW + colorama.Fore.BLACK + "NOT MAKING A COMMIT MAY CAUSE CONFLICTS!" + colorama.Style.
               RESET_ALL)
-        print("Leave commit-name blank to not do a commit.")
+        print("Leave 'Commit name' blank to not do a commit.")
         get_commit_name = input("Commit name >")
         if get_commit_name != "":
             commit(get_commit_name)
@@ -142,10 +142,10 @@ def sync():
     if backupCount != 0:
         print("Backing up file...")
         backup_name = str(datetime.datetime.now())
-        new_path = filePath + '.Backups'  # Makes Directory if it Doesn't exist
+        new_path = filePath + '.bks'  # Makes Directory if it Doesn't exist
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        shutil.copyfile(filePath, filePath + '.Backups/' + backup_name.replace(':', '-'))
+        shutil.copyfile(filePath, filePath + '.bks/' + backup_name.replace(':', '-'))
     # Notifies user of number of Backups
     if backupCount == -1:
         print("Keeping all Backups.")
@@ -196,10 +196,10 @@ def sync():
     shutil.rmtree(filePath + '.zvc')
 
     if int(backupCount) == 0:
-        if os.path.exists(filePath + '.Backups'):
-            shutil.rmtree(os.path.exists(filePath + '.Backups'))
+        if os.path.exists(filePath + '.bks'):
+            shutil.rmtree(os.path.exists(filePath + '.bks'))
     else:
-        path = filePath + '.Backups'
+        path = filePath + '.bks'
         files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
         if len(files) > int(backupCount):
             for i in range(0, len(files) - int(backupCount)):
