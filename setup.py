@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='zipversioncontrol',
-    version='1.0.0.dev4',
+    name='ZipVC',
+    version='1.0.0.dev5',
     packages=find_packages(),
     url='https://bitbucket.org/TSDude/zipversioncontrol',
     license='MIT',
