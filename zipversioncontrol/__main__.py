@@ -11,7 +11,7 @@ import git
 
 colorama.init()
 # Sets up variables
-file = ''
+filePath = ''
 backupCount = ''
 gitDir = ''
 scrollVar = 0
@@ -43,28 +43,28 @@ else:
 
 # Sets up config-related stuff
 def config():  # Sets up config file
-    global file
+    global filePath
     global backupCount
     global gitDir
-    file = input("Zip File Path >")
+    filePath = input("Zip File Path >")
     backupCount = input("Number of File Backups to Keep (-1 is keep all) >")
     gitDir = input("Git Repo Directory >")
     # Recreates config file
-    open(os.path.basename(__file__) + '.cfg', 'w').close()
-    config_file_w = open(os.path.basename(__file__) + '.cfg', 'w')
-    config_file_w.write(file + '\n' + backupCount + '\n' + gitDir)
+    open('zipversioncontrol.cfg', 'w').close()
+    config_file_w = open('zipversioncontrol.cfg', 'w')
+    config_file_w.write(filePath + '\n' + backupCount + '\n' + gitDir)
 
 
 def init():
-    global file
+    global filePath
     global backupCount
     global gitDir
     # Opens config file
-    if os.path.isfile(os.path.basename(__file__) + '.cfg'):
+    if os.path.isfile('zipversioncontrol.cfg'):
         try:
-            configfile = open(os.path.basename(__file__) + '.cfg', 'r').read()
+            configfile = open('zipversioncontrol.cfg', 'r').read()
             config_files = configfile.splitlines()
-            file = config_files[0]
+            filePath = config_files[0]
             backupCount = config_files[1]
             gitDir = config_files[2]
         except ResourceWarning:
@@ -89,8 +89,9 @@ init()
 # commit
 def commit(commit_name):
     if commit_name == "":
-        print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using zip file " + file + " and git directory " + gitDir +
-              colorama.Style.RESET_ALL)
+        print(
+            colorama.Back.YELLOW + colorama.Fore.BLACK + "Using zip file " + filePath + " and git directory " + gitDir +
+            colorama.Style.RESET_ALL)
         commit_name = input("Commit name >")
     # Deletes outdated contents of git repository
     for gitFile in os.listdir(gitDir):
@@ -103,7 +104,7 @@ def commit(commit_name):
                 shutil.rmtree(git_file_path)
     # Extracts file
     print("Extracting File...")
-    with zipfile.ZipFile(file, 'r') as zipFile:
+    with zipfile.ZipFile(filePath, 'r') as zipFile:
         zipFile.extractall(gitDir)
         zipFile.close()
 
@@ -121,23 +122,31 @@ def commit(commit_name):
 
 # sync
 def sync():
-    print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using file " + file + " and directory " + gitDir + colorama.
+    print(colorama.Back.YELLOW + colorama.Fore.BLACK + "Using file " + filePath + " and directory " + gitDir + colorama.
           Style.RESET_ALL)
-    # Commits File
-    print(colorama.Back.YELLOW + colorama.Fore.BLACK + "NOT MAKING A COMMIT MAY CAUSE CONFLICTS!" + colorama.Style.
-          RESET_ALL)
-    print("Leave commit-name blank to not do a commit.")
-    get_commit_name = input("Commit name >")
-    if get_commit_name != "":
-        commit(get_commit_name)
+    # Checks to see if commit is needed
+    try:  # Gets file's last modify time
+        file_mtime = os.path.getmtime(filePath)
+    except OSError:
+        file_mtime = 0
+    file_modify_date = datetime.datetime.fromtimestamp(file_mtime)
+    last_commit_date_str = repo.git.show('-s', '--format=%ci')  # Gets last commit date
+    last_commit_date = datetime.datetime.strptime(last_commit_date_str, "%Y-%m-%d %H:%M:%S -%f")
+    if file_modify_date > last_commit_date:
+        print(colorama.Back.YELLOW + colorama.Fore.BLACK + "NOT MAKING A COMMIT MAY CAUSE CONFLICTS!" + colorama.Style.
+              RESET_ALL)
+        print("Leave commit-name blank to not do a commit.")
+        get_commit_name = input("Commit name >")
+        if get_commit_name != "":
+            commit(get_commit_name)
     # Backs up file
     if backupCount != 0:
         print("Backing up file...")
         backup_name = str(datetime.datetime.now())
-        new_path = file + '.Backups'  # Makes Directory if it Doesn't exist
+        new_path = filePath + '.Backups'  # Makes Directory if it Doesn't exist
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        shutil.copyfile(file, file + '.Backups/' + backup_name.replace(':', '-'))
+        shutil.copyfile(filePath, filePath + '.Backups/' + backup_name.replace(':', '-'))
     # Notifies user of number of Backups
     if backupCount == -1:
         print("Keeping all Backups.")
@@ -146,52 +155,52 @@ def sync():
     else:
         print("Keeping " + backupCount + " Backup files.")
     # Syncs git repo
-    print("Merging changes to local repo...")
+    print("Pulling changes to local repo...")
     o = repo.remotes.origin
     try:
         o.pull()
-    except RuntimeError:
-        print(colorama.Back.RED + colorama.Fore.WHITE + "An error has occurred.\n" +
-              "Please do a pull on a different git client to fix the issue.")
-        print("ERROR")
-        sys.exit("Problem with git pull")
+    except git.GitCommandError:
+        print(colorama.Back.RED + colorama.Fore.WHITE + "Pull failed!")
+        print("ERROR" + colorama.Style.RESET_ALL)
+        sys.exit(colorama.Back.WHITE + colorama.Fore.BLACK +
+                 "Run 'git pull' using another git client to resolve the issue." + colorama.Style.RESET_ALL)
     print("Pushing changes to remote repo...")
     o.push()
     # Copies necessary repo files for management
     print("Creating temporary copy of necessary files...")
-    if os.path.isdir(file + '.zvc'):
-        shutil.rmtree(file + '.zvc')
-    os.mkdir(file + '.zvc')
+    if os.path.isdir(filePath + '.zvc'):
+        shutil.rmtree(filePath + '.zvc')
+    os.mkdir(filePath + '.zvc')
     for gitFile in os.listdir(gitDir):
         git_file_path = os.path.join(gitDir, gitFile)
         if os.path.isfile(git_file_path):
             if gitFile != ".gitignore" and gitFile != ".gitattributes":
-                shutil.copyfile(git_file_path, file + '.zvc/' + gitFile)
+                shutil.copyfile(git_file_path, filePath + '.zvc/' + gitFile)
         elif os.path.isdir(git_file_path):
             if gitFile != ".git":
-                shutil.copytree(git_file_path, file + '.zvc/' + gitFile)
+                shutil.copytree(git_file_path, filePath + '.zvc/' + gitFile)
     # Creates new archive
     print("Creating new zip archive...")
     if platform.system() == "Windows":
-        file_name = file.split("\\")
+        file_name = filePath.split("\\")
     else:
-        file_name = file.split("/")
-    shutil.make_archive(file_name[-1], 'zip', file + '.zvc')
+        file_name = filePath.split("/")
+    shutil.make_archive(file_name[-1], 'zip', filePath + '.zvc')
     # Removes old file
     print("Replacing old file...")
-    os.remove(file)
+    os.remove(filePath)
     # Replaces old file
     os.rename(file_name[-1] + ".zip", file_name[-1])
-    shutil.move(file_name[-1], file)
+    shutil.move(file_name[-1], filePath)
     # Cleans up temporary .zvc folder and excess Backups
     print("Cleaning up...")
-    shutil.rmtree(file + '.zvc')
+    shutil.rmtree(filePath + '.zvc')
 
     if int(backupCount) == 0:
-        if os.path.exists(file + '.Backups'):
-            shutil.rmtree(os.path.exists(file + '.Backups'))
+        if os.path.exists(filePath + '.Backups'):
+            shutil.rmtree(os.path.exists(filePath + '.Backups'))
     else:
-        path = file + '.Backups'
+        path = filePath + '.Backups'
         files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
         if len(files) > int(backupCount):
             for i in range(0, len(files) - int(backupCount)):
