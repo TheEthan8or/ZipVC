@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='ZipVC',
-    version='1.0.0.dev7',
+    version='1.0.0.dev8',
     packages=find_packages(),
-    url='https://bitbucket.org/TSDude/zipversioncontrol',
+    url='https://tsdude.github.io/ZipVC/',
     license='MIT',
     author='team1790',
     author_email='ts-programs@outlook.com',
-    description='Allows git version control with zip archives',
+    description='A way to version control a zip archive using git ',
     install_requires=['colorama', 'gitpython'],
     classifiers=[
         # How mature is this project? Common values are
@@ -28,6 +28,6 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 3.6',
     ],
-    keywords='zip file archive git version control',
+    keywords='version-control zipfile zip archive file',
     python_requires='>=3.6',
 )
